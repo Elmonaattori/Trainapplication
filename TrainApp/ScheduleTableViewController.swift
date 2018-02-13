@@ -104,6 +104,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
         
         super.viewDidLoad()
         loadStationsData()
+        self.tableView.rowHeight = 100
         updateUserInterface()
     }
     
@@ -122,7 +123,8 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
     /*Ladataan saapuvien junien aikataulut tietyssä kaupungissa. cityName haluttu kaupunki.
  completionHandler hoitaa että tiedot ladataan ennen kuin jatketaan eteenpäin koodissa.*/
     func loadCityArriveSchedules(cityName: String, completionHandler: @escaping (Bool) -> ()) {
-
+        
+        let numberOfSchedules: String = "10"
         var stationArriveScheduleUrl: String
         var stationShortCode : String = "TPE"
         
@@ -135,7 +137,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
             }
         }
 
-        stationArriveScheduleUrl = ("https://rata.digitraffic.fi/api/v1/live-trains/station/" + stationShortCode + "?arrived_trains=0&arriving_trains=5&departed_trains=0&departing_trains=0&include_nonstopping=false")
+        stationArriveScheduleUrl = ("https://rata.digitraffic.fi/api/v1/live-trains/station/" + stationShortCode + "?arrived_trains=0&arriving_trains=" + numberOfSchedules + "&departed_trains=0&departing_trains=0&include_nonstopping=false")
 
         guard let ArriveUrl = URL(string: stationArriveScheduleUrl)
             else {
@@ -169,6 +171,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
      completionHandler hoitaa että tiedot ladataan ennen kuin jatketaan eteenpäin koodissa.*/
     func loadCityDepartureSchedules(cityName: String, completionHandler: @escaping (Bool) -> ()) {
 
+        let numberOfSchedules: String = "10"
         var stationDepartureScheduleUrl: String
         var stationShortCode : String = "TPE"
         for name in (stations) {
@@ -180,7 +183,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
             }
         }
         
-        stationDepartureScheduleUrl = ("https://rata.digitraffic.fi/api/v1/live-trains/station/" + stationShortCode + "?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=5&include_nonstopping=false")
+        stationDepartureScheduleUrl = ("https://rata.digitraffic.fi/api/v1/live-trains/station/" + stationShortCode + "?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=" + numberOfSchedules + "&include_nonstopping=false")
         
         guard let DepartureUrl = URL(string: stationDepartureScheduleUrl)
             else {
@@ -253,11 +256,11 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
     
     /*Palauttaa ajan jolloin juna saapuu tai lähtee tietyltä asemalta. stationName on aseman nimi.
     Indexeillä löydetään aikataulutiedoista oikea kaupunki ja lähteekö vai lähteekö juna.*/
-    func findTime(stationName: String, indexSection: Int, indexRow: Int) -> String {
+    func findArriveTime(stationName: String, indexSection: Int, indexRow: Int) -> String {
         
         var foundShortCode = ""
         
-        if indexSection == 0 {
+
             
             for station in stations {
                 
@@ -270,43 +273,116 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
                     
                     if foundShortCode == station.stationShortCode {
                         
-                        let time = String(station.scheduledTime)
-                        let startindex = time.index(time.startIndex, offsetBy: 11)
-                        let endindex = time.index(time.endIndex, offsetBy: -8)
-                        let result = String(time[startindex..<endindex])
-                        return result
+                        if station.type == "ARRIVAL" {
+                            let time = String(station.scheduledTime)
+                            let startindexHour = time.index(time.startIndex, offsetBy: 11)
+                            let endindexHour = time.index(time.endIndex, offsetBy: -11)
+                            let startindexMinutes = time.index(time.startIndex, offsetBy: 14)
+                            let endindexMinutes = time.index(time.endIndex, offsetBy: -8)
+                            
+                            var Hours: Int = Int(time[startindexHour..<endindexHour])!
+                            if Hours < 22 && Hours > 00 {
+                                Hours = Hours + 2
+                            }
+                            else if Hours > 21 && Hours < 24 {
+                                Hours = 24 - Hours
+                            }
+                            
+                            let Minutes: Int = Int(time[startindexMinutes..<endindexMinutes])!
+                            
+                            var HoursString: String
+                            var MinutesString: String
+                            if Hours < 10 {
+                                HoursString = "0" + String(Hours)
+                            }
+                            else {
+                                HoursString = String(Hours)
+                            }
+                            if Minutes < 10 {
+                                MinutesString = "0" + String(Minutes)
+                            }
+                            else {
+                                MinutesString = String(Minutes)
+                            }
+                            
+                            let result = HoursString + ":" + MinutesString
+                            return result
+                        }
+                        
                     }
                 }
             }
-        }
+        return ""
+    }
+    
+    
+    /*Palauttaa ajan jolloin juna saapuu tai lähtee tietyltä asemalta. stationName on aseman nimi.
+     Indexeillä löydetään aikataulutiedoista oikea kaupunki ja lähteekö vai lähteekö juna.*/
+    func findDepartureTime(stationName: String, indexSection: Int, indexRow: Int) -> String {
         
-        if indexSection == 1 {
-            
+        var foundShortCode = ""
+        
             for station in stations {
                 
                 if station.stationName == stationName {
                     
                     foundShortCode = station.stationShortCode
+                    
                 }
                 
                 for station in stationDepartureSchedules[indexRow].timeTableRows {
                     
                     if foundShortCode == station.stationShortCode {
                         
-                        let time = String(station.scheduledTime)
-                        let startindex = time.index(time.startIndex, offsetBy: 11)
-                        let endindex = time.index(time.endIndex, offsetBy: -8)
-                        let result = String(time[startindex..<endindex])
-                        return result
+                        if station.type == "DEPARTURE" {
+                            
+                            let time = String(station.scheduledTime)
+                            let startindexHour = time.index(time.startIndex, offsetBy: 11)
+                            let endindexHour = time.index(time.endIndex, offsetBy: -11)
+                            let startindexMinutes = time.index(time.startIndex, offsetBy: 14)
+                            let endindexMinutes = time.index(time.endIndex, offsetBy: -8)
+                            
+                            var Hours: Int = Int(time[startindexHour..<endindexHour])!
+                            if Hours < 22 && Hours > 00 {
+                                
+                                Hours = Hours + 2
+                            }
+                            else if Hours > 21 && Hours < 24 {
+                                
+                                Hours = 24 - Hours
+                            }
+                            
+                            let Minutes: Int = Int(time[startindexMinutes..<endindexMinutes])!
+                            
+                            var HoursString: String
+                            var MinutesString: String
+                            if Hours < 10 {
+                                
+                                HoursString = "0" + String(Hours)
+                            }
+                            else {
+                                
+                                HoursString = String(Hours)
+                            }
+                            if Minutes < 10 {
+                                
+                                MinutesString = "0" + String(Minutes)
+                            }
+                            else {
+                                
+                                MinutesString = String(Minutes)
+                            }
+                            
+                            let result = HoursString + ":" + MinutesString
+                            return result
+                        }
                     }
                 }
-            }
         }
-        
         return ""
     }
-    
 
+    
     override func didReceiveMemoryWarning() {
         
         super.didReceiveMemoryWarning()
@@ -323,7 +399,13 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
     //Rivien määrä on haettujen tietojen lukumäärä.
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
 
+        if section == 0 {
+            return stationArriveSchedules.count
+        }
+        else {
             return stationDepartureSchedules.count
+        }
+        
     }
 
     
@@ -331,24 +413,25 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
  
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        let trainTypeLabel = cell.viewWithTag(2) as! UILabel
-        let trainNumberLabel = cell.viewWithTag(1) as! UILabel
+        let trainNumberLabel = cell.viewWithTag(2) as! UILabel
+        let trainTypeImage = cell.viewWithTag(1) as! UIImageView
         let trainTimeLabel = cell.viewWithTag(3) as! UILabel
 
         if indexPath.section == 0 {
             
             let scheduleObject = self.stationArriveSchedules[indexPath.row]
-            trainTypeLabel.text = String(scheduleObject.trainNumber)
-            trainNumberLabel.text = String(scheduleObject.trainType)
-            trainTimeLabel.text = findTime(stationName: stationName, indexSection: indexPath.section, indexRow: indexPath.row)
+            trainTypeImage.image = UIImage(named: scheduleObject.trainType + ".png")
+            trainNumberLabel.text = String(scheduleObject.trainNumber)
+            trainTimeLabel.text = findArriveTime(stationName: stationName, indexSection: indexPath.section, indexRow: indexPath.row)
+            
         }
             
         else if indexPath.section == 1 {
             
             let scheduleObject = self.stationDepartureSchedules[indexPath.row]
-            trainTypeLabel.text = String(scheduleObject.trainNumber)
-            trainNumberLabel.text = String(scheduleObject.trainType)
-            trainTimeLabel.text = findTime(stationName: stationName, indexSection: indexPath.section, indexRow: indexPath.row)
+            trainTypeImage.image = UIImage(named: scheduleObject.trainType + ".png")
+            trainNumberLabel.text = String(scheduleObject.trainNumber)
+            trainTimeLabel.text = findDepartureTime(stationName: stationName, indexSection: indexPath.section, indexRow: indexPath.row)
         }
 
         return cell
@@ -364,11 +447,25 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
         }
             
         else if section == 1 {
-            
+
             return "Departing"
         }
         
         return "-"
+    }
+    
+    
+    //Säätää sektioiden otsikoiden värin.
+    override func tableView(_ tableView: UITableView, willDisplayHeaderView view:UIView, forSection: Int) {
+        if let headerTitle = view as? UITableViewHeaderFooterView {
+            if forSection == 0 {
+                headerTitle.textLabel?.textColor = UIColor.green
+            }
+            if forSection == 1 {
+                headerTitle.textLabel?.textColor = UIColor.red
+            }
+            
+        }
     }
     
     
@@ -396,7 +493,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
                 destination.trainNumber = stationArriveSchedules[indexRow].trainNumber
                 destination.stationName = stationName
                 destination.timeTableRows = stationArriveSchedules[indexRow].timeTableRows
-                destination.time = findTime(stationName: stationName, indexSection: indexSection, indexRow: indexRow)
+                destination.time = findArriveTime(stationName: stationName, indexSection: indexSection, indexRow: indexRow)
                 destination.stations = stations
             }
                 
@@ -406,7 +503,7 @@ class ScheduleTableViewController: UITableViewController, UISearchBarDelegate {
                 destination.trainNumber = stationDepartureSchedules[indexRow].trainNumber
                 destination.stationName = stationName
                 destination.timeTableRows = stationDepartureSchedules[indexRow].timeTableRows
-                destination.time = findTime(stationName: stationName, indexSection: indexSection, indexRow: indexRow)
+                destination.time = findDepartureTime(stationName: stationName, indexSection: indexSection, indexRow: indexRow)
                 destination.stations = stations
             }
         }

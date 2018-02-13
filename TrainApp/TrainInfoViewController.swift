@@ -15,7 +15,10 @@ import UIKit
 class TrainInfoViewController: UIViewController {
     
     //Linkit UI-komponentteihin.
-    @IBOutlet weak var trainNameLabel: UILabel!
+
+    @IBOutlet weak var endPointLabel: UILabel!
+    @IBOutlet weak var startPointLabel: UILabel!
+    @IBOutlet weak var trainTypeImage: UIImageView!
     @IBOutlet weak var trainNumberLabel: UILabel!
     @IBOutlet weak var ArriveDepartureLabel: UILabel!
     @IBOutlet weak var timeLabel: UILabel!
@@ -64,9 +67,11 @@ class TrainInfoViewController: UIViewController {
         let endindex = stationsText.index(stationsText.endIndex, offsetBy: 0)
         let result = String(stationsText[startindex..<endindex])
         
+        startPointLabel.text = stationNameArray[0]
+        endPointLabel.text = stationNameArray[stationNameArray.count - 1]
         stationsLabel.text = result
         timeLabel.text = time
-        trainNameLabel.text = trainType
+        trainTypeImage.image = UIImage(named: trainType + ".png")
         trainNumberLabel.text = String(trainNumber)
         
         if indexSection == 0 {
